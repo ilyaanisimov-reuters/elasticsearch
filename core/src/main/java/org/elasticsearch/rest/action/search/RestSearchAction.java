@@ -37,6 +37,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.StoredFieldsContext;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.internal.SearchContext;
+import org.elasticsearch.search.slice.SliceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder.SuggestMode;
@@ -125,11 +126,23 @@ public class RestSearchAction extends BaseRestHandler {
         if (scroll != null) {
             searchRequest.scroll(new Scroll(parseTimeValue(scroll, null, "scroll")));
         }
+        String[] slice = request.paramAsStringArray("slice", new String[0]);
+        if(slice != null && slice.length > 0) {
+            searchRequest.source().slice(parseSlice(slice));
+        }
 
         searchRequest.types(Strings.splitStringByCommaToArray(request.param("type")));
         searchRequest.routing(request.param("routing"));
         searchRequest.preference(request.param("preference"));
         searchRequest.indicesOptions(IndicesOptions.fromRequest(request, searchRequest.indicesOptions()));
+    }
+    
+    protected static SliceBuilder parseSlice(String[] paramArr) {
+        if(paramArr.length < 3) throw new IllegalArgumentException("slice must have the following format: <field_name>,<id>,<max>. E.g. slice=DP,0,135");
+        String fieldName = paramArr[0];
+        int id = Integer.valueOf(paramArr[1]);
+        int max = Integer.valueOf(paramArr[2]);
+        return new SliceBuilder(fieldName, id, max);
     }
 
     /**
